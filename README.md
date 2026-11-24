@@ -38,7 +38,7 @@ The same program in Spanish is `crear` / `usar` / `tabla … inicio` / `nombre l
 - [Configuration](#configuration)
 - [Testing](#testing)
 - [Roadmap](#roadmap)
-- [Authors](#authors)
+- [Author](#author)
 - [Resumen en español](#resumen-en-español)
 
 ## Highlights
@@ -46,7 +46,7 @@ The same program in Spanish is `crear` / `usar` / `tabla … inicio` / `nombre l
 - **Bilingual language.** Every keyword has an English and a Spanish spelling, and both are accepted in the same program with no switch to flip. The compiler detects the program's main language and reports errors, the schema summary and the generated app's labels in that language.
 - **Real compiler pipeline.** An ANTLR 3 grammar ([`NaturalSql.g`](src/main/antlr3/io/github/leon004/nl2sql/compiler/NaturalSql.g)) generates the lexer and parser at build time. The parser builds a typed schema model, a semantic analysis pass validates it, and separate back ends emit code.
 - **Two code generators.** One emits idempotent **MySQL DDL** with primary and foreign keys. The other emits a complete **Java Swing + JDBC CRUD application** (one form per table, prepared statements). A test compiles the generated Java to make sure it builds.
-- **IDE experience.** Live validation as you type, error highlighting with line and column, readable error messages ("Expected 'begin' but found 'begn'" / "Se esperaba 'inicio' pero se encontró 'inico'"), line numbers, keyboard shortcuts and five FlatLaf themes.
+- **IDE experience.** Live validation as you type, error highlighting with line and column, readable error messages ("Expected 'begin' but found 'begn'" / "Se esperaba 'inicio' pero se encontró 'inico'"), line numbers, keyboard shortcuts, five FlatLaf themes, and an English / Spanish interface (menu **Language / Idioma**, remembered between runs).
 - **Semantic checks** that a grammar can't express: duplicate tables and columns, and foreign keys that point to undeclared or later-declared tables. Errors are caught before MySQL sees them.
 - **One-click export** to a MySQL server. The export runs on a background thread, and connection settings come from environment variables (no hard-coded credentials).
 - **Engineering hygiene.** Maven build, runnable fat jar, a JUnit 5 suite, and a GitHub Actions pipeline that runs the generated SQL against a real MySQL 8.4 container.
@@ -57,7 +57,7 @@ The same program in Spanish is `crear` / `usar` / `tabla … inicio` / `nombre l
 
 ## Quick start
 
-**Prerequisites:** JDK 17+ and Maven 3.9+. MySQL 8 is optional; you only need it for "Exportar a MySQL".
+**Prerequisites:** JDK 17+ and Maven 3.9+. MySQL 8 is optional; you only need it for **Export to MySQL**.
 
 ```bash
 git clone https://github.com/leon004/InteliJ-internal-IDE-with-ANTLR-to-generate-SQL-from-Natural-Language.git nl2sql-ide
@@ -72,7 +72,7 @@ mvn package
 java -jar target/nl2sql-ide-2.0.0-all.jar
 ```
 
-The IDE opens with a Spanish example loaded. Use **Archivo → Load example (English)** for the English one. Press **Compilar** (or <kbd>Ctrl</kbd>+<kbd>Enter</kbd>) to see the SQL, a schema summary and the generated `Principal.java`.
+The IDE opens in English with the English example ([`examples/company.txt`](examples/company.txt)) loaded. Press **Compile** (or <kbd>Ctrl</kbd>+<kbd>Enter</kbd>) to see the SQL, a schema summary and the generated `Principal.java`. **File → Load Spanish example** loads the same database written in Spanish, and **Language / Idioma → Español** switches the interface to Spanish.
 
 <details>
 <summary>macOS with Homebrew: installing the prerequisites</summary>
@@ -113,7 +113,7 @@ With `foreign` / `foranea`, the column name is the referenced table, and that ta
 
 **Mixing languages.** There is no language switch: both sets of keywords are always active, so `crear shop use shop table client inicio name text fin close` is a valid program. The compiler counts the language-specific keywords (ignoring comments and words like `decimal` that are the same in both languages) and uses the majority language for messages and generated text. On a tie, the first keyword's language wins. Because both sets are reserved, a column can't be named exactly `date`, `text` or `end`. Names like `hire_date` or `ended` are fine.
 
-Complete programs in English, Spanish and mixed are in [`examples/`](examples).
+Complete programs are in [`examples/`](examples): [`company.txt`](examples/company.txt) (English), [`empresa.txt`](examples/empresa.txt) and [`escuela.txt`](examples/escuela.txt) (Spanish), and [`mixed.txt`](examples/mixed.txt) (both). The full reference is also in the app under **Help → Language reference**.
 
 ## How it works
 
@@ -135,7 +135,7 @@ flowchart LR
 3. **Parsing.** The grammar's actions build immutable Java `record`s (`Schema`, `Table`, `Column`) with source spans. The parser and lexer fail fast on the first error, and [`SyntaxErrors`](src/main/java/io/github/leon004/nl2sql/compiler/SyntaxErrors.java) translates ANTLR exceptions into localized messages with exact character offsets.
 4. **Semantic analysis.** [`SemanticValidator`](src/main/java/io/github/leon004/nl2sql/compiler/SemanticValidator.java) enforces unique names and foreign-key ordering, so the SQL is valid for MySQL.
 5. **Code generation.** Back ends are plain classes that take a `Schema` and know nothing about the parser or the UI. You can add a new target (PostgreSQL, JPA entities, …) without touching the grammar.
-6. **UI.** [`MainWindow`](src/main/java/io/github/leon004/nl2sql/ui/MainWindow.java) re-parses 300 ms after you stop typing, highlights the error span, and runs the MySQL export in a `SwingWorker` so the UI never freezes.
+6. **UI.** [`MainWindow`](src/main/java/io/github/leon004/nl2sql/ui/MainWindow.java) re-parses 300 ms after you stop typing, highlights the error span, and runs the MySQL export in a `SwingWorker` so the UI never freezes. Its own labels follow the interface language you pick, while compiler messages follow the program's language.
 
 ## Project structure
 
@@ -186,7 +186,7 @@ flowchart LR
 
 ## Configuration
 
-"Exportar a MySQL" and the generated `Principal.java` read their connection settings from environment variables. You can also pass them as `-D` system properties, which take precedence.
+**Export to MySQL** and the generated `Principal.java` read their connection settings from environment variables. You can also pass them as `-D` system properties, which take precedence.
 
 | Environment variable | System property | Default |
 |---|---|---|
@@ -205,7 +205,6 @@ NL2SQL_DB_USER=root NL2SQL_DB_PASSWORD=secret java -jar target/nl2sql-ide-2.0.0-
 
 ## Roadmap
 
-- [ ] English / Spanish switch for the IDE's own menus and buttons (the language itself is already bilingual)
 - [ ] Syntax highlighting and autocomplete for DSL keywords
 - [ ] Column constraints (`obligatorio` → `NOT NULL`, `unico` → `UNIQUE`)
 - [ ] More SQL dialects (PostgreSQL, SQLite) as additional generators
@@ -222,4 +221,4 @@ This project started as a compiler-design course project and was later modernize
 
 **NL2SQL IDE** es un mini-IDE de escritorio que compila un lenguaje natural en español o inglés (`crear`/`create`, `usar`/`use`, `tabla … inicio … fin`/`table … begin … end`, `cerrar`/`close`) a **SQL para MySQL** y a una **aplicación Java CRUD**. Puedes mezclar ambos idiomas, y los errores se muestran en el idioma principal del programa. Está construido con una gramática **ANTLR 3**, valida el programa mientras escribes, marca los errores en rojo con línea y columna, y puede crear la base de datos directamente en MySQL.
 
-Para ejecutarlo: `mvn package` y luego `java -jar target/nl2sql-ide-2.0.0-all.jar`. La referencia completa del lenguaje está en el menú **Ayuda → Referencia del lenguaje**.
+Para ejecutarlo: `mvn package` y luego `java -jar target/nl2sql-ide-2.0.0-all.jar`. La interfaz abre en inglés; cámbiala con **Language / Idioma → Español**, y carga el ejemplo en español con **Archivo → Cargar ejemplo en español**. La referencia completa del lenguaje está en **Ayuda → Referencia del lenguaje**.
