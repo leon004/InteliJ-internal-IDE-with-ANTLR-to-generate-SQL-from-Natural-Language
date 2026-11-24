@@ -1,0 +1,17 @@
+# Spanish and English keywords can be mixed in the same program.
+
+crear library
+use library
+
+table autor inicio
+    nombre letras
+    born date
+end
+
+tabla book begin
+    title text
+    precio decimal
+    autor foranea
+fin
+
+close

@@ -1,47 +1,54 @@
 package io.github.leon004.nl2sql.compiler;
 
 import io.github.leon004.nl2sql.model.ColumnType;
+import io.github.leon004.nl2sql.model.Keyword;
+import io.github.leon004.nl2sql.model.Language;
 import io.github.leon004.nl2sql.model.SourceSpan;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 import org.antlr.runtime.CommonToken;
-import org.antlr.runtime.Lexer;
 import org.antlr.runtime.MismatchedTokenException;
 import org.antlr.runtime.NoViableAltException;
-import org.antlr.runtime.Parser;
 import org.antlr.runtime.RecognitionException;
 import org.antlr.runtime.Token;
 
-/** Turns ANTLR recognition errors into user-friendly {@link CompilationException}s. */
+/** Turns ANTLR recognition errors into readable, localized {@link CompilationException}s. */
 final class SyntaxErrors {
-
-    private static final String VALID_TYPES = Arrays.stream(ColumnType.values())
-            .map(ColumnType::keyword)
-            .collect(Collectors.joining(", "));
 
     private SyntaxErrors() {
     }
 
-    static CompilationException fromParser(RecognitionException e, Parser parser) {
+    static CompilationException fromParser(RecognitionException e, NaturalSqlParser parser) {
+        Language lang = parser.getLanguage();
         Token found = e.token;
-        String foundText = describeToken(found);
+        String foundText = describeToken(found, lang);
         String message;
 
         if (e instanceof MismatchedTokenException mte && mte.expecting > 0) {
-            message = "Se esperaba " + describeTokenType(mte.expecting, parser.getTokenNames())
-                    + " pero se encontró " + foundText + ".";
+            String expected = describeTokenType(mte.expecting, parser.getTokenNames(), lang);
+            message = lang.pick(
+                    "Se esperaba " + expected + " pero se encontró " + foundText + ".",
+                    "Expected " + expected + " but found " + foundText + ".");
         } else if (e instanceof NoViableAltException) {
-            message = "Tipo de dato no válido: " + foundText + ". Usa uno de: " + VALID_TYPES + ".";
+            String valid = Arrays.stream(ColumnType.values())
+                    .map(t -> t.keyword(lang))
+                    .collect(Collectors.joining(", "));
+            message = lang.pick(
+                    "Tipo de dato no válido: " + foundText + ". Usa uno de: " + valid + ".",
+                    "Invalid data type: " + foundText + ". Use one of: " + valid + ".");
         } else {
-            message = "Sintaxis inválida cerca de " + foundText + ".";
+            message = lang.pick("Sintaxis inválida cerca de " + foundText + ".",
+                    "Invalid syntax near " + foundText + ".");
         }
-        return new CompilationException(message, span(found, found), e);
+        return new CompilationException(message, span(found, found), lang, e);
     }
 
-    static CompilationException fromLexer(RecognitionException e, Lexer lexer) {
-        String ch = e.c == Token.EOF ? "fin del texto" : "'" + (char) e.c + "'";
+    static CompilationException fromLexer(RecognitionException e, NaturalSqlLexer lexer) {
+        Language lang = lexer.getLanguage();
+        String ch = e.c == Token.EOF ? lang.pick("fin del texto", "end of input") : "'" + (char) e.c + "'";
         SourceSpan span = new SourceSpan(e.line, e.charPositionInLine, e.index, e.index + 1);
-        return new CompilationException("Carácter no reconocido: " + ch + ".", span, e);
+        return new CompilationException(
+                lang.pick("Carácter no reconocido: ", "Unrecognized character: ") + ch + ".", span, lang, e);
     }
 
     static SourceSpan span(Token start, Token stop) {
@@ -58,22 +65,33 @@ final class SyntaxErrors {
         return new SourceSpan(first.getLine(), Math.max(0, first.getCharPositionInLine()), from, Math.max(from, to));
     }
 
-    private static String describeToken(Token token) {
+    private static String describeToken(Token token, Language lang) {
         if (token == null || token.getType() == Token.EOF) {
-            return "el fin del texto";
+            return lang.pick("el fin del texto", "the end of input");
         }
         return "'" + token.getText() + "'";
     }
 
-    private static String describeTokenType(int type, String[] tokenNames) {
+    private static String describeTokenType(int type, String[] tokenNames, Language lang) {
         if (type == Token.EOF) {
-            return "el fin del texto";
+            return lang.pick("el fin del texto", "the end of input");
         }
         String name = type < tokenNames.length ? tokenNames[type] : "?";
         return switch (name) {
-            case "ID" -> "un nombre";
-            case "NUMERICO", "ALFABETICO", "FECHA", "DECIMAL", "CONDICION", "FORANEA" -> "un tipo de dato";
+            case "ID" -> lang.pick("un nombre", "a name");
+            case "NUMERICO", "ALFABETICO", "FECHA", "DECIMAL", "CONDICION", "FORANEA" ->
+                    lang.pick("un tipo de dato", "a data type");
+            case "CREAR" -> quote(Keyword.CREATE, lang);
+            case "USAR" -> quote(Keyword.USE, lang);
+            case "TABLA" -> quote(Keyword.TABLE, lang);
+            case "INICIO" -> quote(Keyword.BEGIN, lang);
+            case "FIN" -> quote(Keyword.END, lang);
+            case "CERRAR" -> quote(Keyword.CLOSE, lang);
             default -> "'" + name.toLowerCase() + "'";
         };
+    }
+
+    private static String quote(Keyword keyword, Language lang) {
+        return "'" + keyword.in(lang) + "'";
     }
 }

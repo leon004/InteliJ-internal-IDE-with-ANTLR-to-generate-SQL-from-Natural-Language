@@ -1,6 +1,7 @@
 package io.github.leon004.nl2sql.compiler;
 
 import io.github.leon004.nl2sql.model.Column;
+import io.github.leon004.nl2sql.model.Language;
 import io.github.leon004.nl2sql.model.Schema;
 import io.github.leon004.nl2sql.model.Table;
 import java.util.HashSet;
@@ -17,36 +18,41 @@ final class SemanticValidator {
     }
 
     static void validate(Schema schema) {
+        Language lang = schema.language();
         Set<String> declaredTables = new HashSet<>();
         for (Table table : schema.tables()) {
             if (!declaredTables.add(key(table.name()))) {
-                throw new CompilationException(
-                        "La tabla '" + table.name() + "' ya fue declarada.", table.span());
+                throw new CompilationException(lang.pick(
+                        "La tabla '" + table.name() + "' ya fue declarada.",
+                        "Table '" + table.name() + "' is already declared."), table.span(), lang);
             }
-            validateColumns(table, declaredTables);
+            validateColumns(table, declaredTables, lang);
         }
     }
 
-    private static void validateColumns(Table table, Set<String> declaredTables) {
+    private static void validateColumns(Table table, Set<String> declaredTables, Language lang) {
         Set<String> columnNames = new HashSet<>();
         columnNames.add(key(table.primaryKey()));
         for (Column column : table.columns()) {
             if (column.isForeignKey()) {
                 if (column.name().equalsIgnoreCase(table.name())) {
-                    throw new CompilationException(
+                    throw new CompilationException(lang.pick(
                             "La tabla '" + table.name() + "' no puede tener una llave foránea a sí misma.",
-                            column.span());
+                            "Table '" + table.name() + "' cannot have a foreign key to itself."),
+                            column.span(), lang);
                 }
                 if (!declaredTables.contains(key(column.name()))) {
-                    throw new CompilationException(
+                    throw new CompilationException(lang.pick(
                             "La llave foránea '" + column.name() + "' debe apuntar a una tabla declarada antes.",
-                            column.span());
+                            "Foreign key '" + column.name() + "' must refer to a table declared earlier."),
+                            column.span(), lang);
                 }
             }
             if (!columnNames.add(key(column.sqlName()))) {
-                throw new CompilationException(
+                throw new CompilationException(lang.pick(
                         "La columna '" + column.sqlName() + "' está repetida en la tabla '" + table.name() + "'.",
-                        column.span());
+                        "Column '" + column.sqlName() + "' is repeated in table '" + table.name() + "'."),
+                        column.span(), lang);
             }
         }
     }
