@@ -1,0 +1,28 @@
+# Ejemplo: control escolar con varias llaves foráneas
+
+crear escuela
+usar escuela
+
+tabla carrera inicio
+    nombre letras
+fin
+
+tabla alumno inicio
+    nombre letras
+    fecha_nacimiento fecha
+    carrera foranea
+fin
+
+tabla materia inicio
+    nombre letras
+    creditos numeros
+fin
+
+tabla calificacion inicio
+    alumno foranea
+    materia foranea
+    valor decimal
+    aprobada condicion
+fin
+
+cerrar
