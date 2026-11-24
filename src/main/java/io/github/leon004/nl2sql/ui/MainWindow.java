@@ -126,7 +126,8 @@ public final class MainWindow extends JFrame {
         file.add(action("Guardar SQL…", null, () -> saveText(sqlOutput.getText(), "script.sql")));
         file.add(action("Guardar Java…", null, () -> saveText(javaOutput.getText(), JavaCrudGenerator.CLASS_NAME + ".java")));
         file.addSeparator();
-        file.add(action("Cargar ejemplo", null, this::loadExample));
+        file.add(action("Cargar ejemplo (español)", null, () -> loadExample("ejemplo.txt")));
+        file.add(action("Load example (English)", null, () -> loadExample("example.txt")));
         bar.add(file);
 
         JMenu build = new JMenu("Compilar");
@@ -208,7 +209,9 @@ public final class MainWindow extends JFrame {
         try {
             Schema schema = NaturalLanguageCompiler.parse(editor.getText());
             clearErrorHighlight();
-            showStatus("✔ Programa válido: " + schema.tables().size() + " tabla(s). Presiona Compilar.", OK_COLOR);
+            showStatus(schema.language().pick(
+                    "✔ Programa válido: " + schema.tables().size() + " tabla(s). Presiona Compilar.",
+                    "✔ Valid program: " + schema.tables().size() + " table(s). Press Compilar to compile."), OK_COLOR);
         } catch (CompilationException e) {
             highlightError(e);
         }
@@ -225,8 +228,10 @@ public final class MainWindow extends JFrame {
             sqlOutput.setCaretPosition(0);
             javaOutput.setCaretPosition(0);
             exportAction.setEnabled(true);
-            showStatus("✔ Compilado: base de datos '" + schema.databaseName() + "' con "
-                    + schema.tables().size() + " tabla(s).", OK_COLOR);
+            showStatus(schema.language().pick(
+                    "✔ Compilado: base de datos '" + schema.databaseName() + "' con " + schema.tables().size() + " tabla(s).",
+                    "✔ Compiled: database '" + schema.databaseName() + "' with " + schema.tables().size() + " table(s)."),
+                    OK_COLOR);
         } catch (CompilationException e) {
             exportAction.setEnabled(false);
             highlightError(e);
@@ -331,7 +336,11 @@ public final class MainWindow extends JFrame {
     }
 
     private void loadExample() {
-        try (InputStream in = MainWindow.class.getResourceAsStream("/io/github/leon004/nl2sql/ejemplo.txt")) {
+        loadExample("ejemplo.txt");
+    }
+
+    private void loadExample(String resource) {
+        try (InputStream in = MainWindow.class.getResourceAsStream("/io/github/leon004/nl2sql/" + resource)) {
             if (in != null) {
                 editor.setText(new String(in.readAllBytes(), StandardCharsets.UTF_8));
                 editor.setCaretPosition(0);
@@ -357,33 +366,37 @@ public final class MainWindow extends JFrame {
     private void showLanguageReference() {
         JTextArea text = codeArea(false);
         text.setText("""
-                Estructura de un programa
-                -------------------------
-                crear <base>              CREATE DATABASE <base>
-                usar <base>               USE <base>
-                tabla <nombre> inicio     CREATE TABLE <nombre> (
-                    <columna> <tipo>          <nombre>_key INT AUTO_INCREMENT PRIMARY KEY se agrega solo
-                fin                       )
-                cerrar                    fin del programa
+                Estructura / Structure
+                ----------------------
+                Español                English          SQL
+                crear <base>           create <db>      CREATE DATABASE <db>
+                usar <base>            use <db>         USE <db>
+                tabla <t> inicio       table <t> begin  CREATE TABLE <t> (<t>_key INT AUTO_INCREMENT PRIMARY KEY, …
+                    <columna> <tipo>       <col> <type>     <col> <SQL type>
+                fin                    end              )
+                cerrar                 close            fin del programa / end of program
 
-                Tipos de dato
+                Tipos de dato / Data types
+                --------------------------
+                numeros     number     INT
+                letras      text       VARCHAR(200)
+                decimal     decimal    DECIMAL(10,2)
+                fecha       date       DATE
+                condicion   boolean    BOOLEAN
+                foranea     foreign    <t>_key INT + FOREIGN KEY → <t>(<t>_key)
+                                       (la tabla debe declararse antes / table must be declared earlier)
+
+                Notas / Notes
                 -------------
-                numeros     INT
-                letras      VARCHAR(200)
-                decimal     DECIMAL(10,2)
-                fecha       DATE
-                condicion   BOOLEAN
-                foranea     <tabla>_key INT + FOREIGN KEY → <tabla>(<tabla>_key)
-                            (la tabla referenciada debe declararse antes)
-
-                Notas
-                -----
-                • Las palabras clave no distinguen mayúsculas (Tabla = tabla).
-                • Las líneas que empiezan con # son comentarios.
-                • Ctrl+Enter compila; los errores se marcan en rojo mientras escribes.
+                • Puedes mezclar español e inglés. Los errores salen en el idioma principal del programa.
+                  You can mix Spanish and English. Errors use the program's main language.
+                • Las palabras clave no distinguen mayúsculas (Tabla = tabla = TABLE).
+                  Keywords are case-insensitive.
+                • # inicia un comentario / # starts a comment.
+                • Ctrl+Enter compila / compiles.
                 """);
-        text.setColumns(72);
-        text.setRows(26);
+        text.setColumns(96);
+        text.setRows(30);
         JOptionPane.showMessageDialog(this, new JScrollPane(text), "Referencia del lenguaje", JOptionPane.PLAIN_MESSAGE);
     }
 
@@ -403,11 +416,10 @@ public final class MainWindow extends JFrame {
     private void showAbout() {
         JOptionPane.showMessageDialog(this, """
                 NL2SQL IDE
-                Compilador de lenguaje natural (español) a SQL y Java, construido con ANTLR 3.
+                Compilador de lenguaje natural (español / English) a SQL y Java, construido con ANTLR 3.
+                Natural-language (Spanish / English) to SQL and Java compiler, built with ANTLR 3.
 
-                Autores:
-                  • Leonardo Calderón Sastre
-                  • Ángel Moisés Montoya Montes de Oca""",
+                Leonardo Calderón Sastre — github.com/leon004""",
                 "Acerca de", JOptionPane.INFORMATION_MESSAGE);
     }
 

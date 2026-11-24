@@ -1,6 +1,7 @@
 package io.github.leon004.nl2sql.codegen;
 
 import io.github.leon004.nl2sql.model.Column;
+import io.github.leon004.nl2sql.model.Language;
 import io.github.leon004.nl2sql.model.Schema;
 import io.github.leon004.nl2sql.model.Table;
 import java.util.List;
@@ -9,7 +10,7 @@ import java.util.stream.Collectors;
 /**
  * Generates a self-contained Java Swing program ({@code Principal.java}) that opens one window
  * per table with a form to insert rows and a button to delete all rows, using JDBC
- * prepared statements.
+ * prepared statements. Button labels and messages follow the program's language.
  *
  * <p>The generated program reads the server connection settings from the same environment
  * variables as the IDE ({@code NL2SQL_DB_URL}, {@code NL2SQL_DB_USER}, {@code NL2SQL_DB_PASSWORD})
@@ -20,6 +21,7 @@ public final class JavaCrudGenerator {
     public static final String CLASS_NAME = "Principal";
 
     public String generate(Schema schema) {
+        Language lang = schema.language();
         StringBuilder code = new StringBuilder();
         code.append("""
                 import java.awt.GridLayout;
@@ -57,7 +59,7 @@ public final class JavaCrudGenerator {
                 """);
 
         for (Table table : schema.tables()) {
-            code.append('\n').append(tableForm(table));
+            code.append('\n').append(tableForm(table, lang));
         }
 
         code.append("""
@@ -83,7 +85,7 @@ public final class JavaCrudGenerator {
         return code.toString();
     }
 
-    private String tableForm(Table table) {
+    private String tableForm(Table table, Language lang) {
         List<Column> columns = table.columns();
         String columnList = columns.stream().map(Column::sqlName).collect(Collectors.joining(", "));
         String placeholders = columns.stream().map(c -> "?").collect(Collectors.joining(", "));
@@ -104,17 +106,17 @@ public final class JavaCrudGenerator {
             m.append("        fields[").append(i).append("] = new JTextField(20);\n");
             m.append("        frame.add(fields[").append(i).append("]);\n");
         }
-        m.append("        JButton insert = new JButton(\"Agregar\");\n");
+        m.append("        JButton insert = new JButton(\"").append(lang.pick("Agregar", "Add")).append("\");\n");
         m.append("        insert.addActionListener(e -> {\n");
         m.append("            String[] values = new String[fields.length];\n");
         m.append("            for (int i = 0; i < fields.length; i++) {\n");
         m.append("                values[i] = fields[i].getText();\n");
         m.append("            }\n");
-        m.append("            run(connection, \"").append(insertSql).append("\", values, \"Inserción exitosa\");\n");
+        m.append("            run(connection, \"").append(insertSql).append("\", values, \"").append(lang.pick("Inserción exitosa", "Row inserted")).append("\");\n");
         m.append("        });\n");
-        m.append("        JButton deleteAll = new JButton(\"Eliminar todo\");\n");
+        m.append("        JButton deleteAll = new JButton(\"").append(lang.pick("Eliminar todo", "Delete all")).append("\");\n");
         m.append("        deleteAll.addActionListener(e -> run(connection, \"DELETE FROM ")
-                .append(table.name()).append("\", new String[0], \"Eliminación exitosa\"));\n");
+                .append(table.name()).append("\", new String[0], \"").append(lang.pick("Eliminación exitosa", "All rows deleted")).append("\"));\n");
         m.append("        frame.add(deleteAll);\n");
         m.append("        frame.add(insert);\n");
         m.append("        frame.pack();\n");

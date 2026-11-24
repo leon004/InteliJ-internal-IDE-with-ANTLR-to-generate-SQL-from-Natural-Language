@@ -1,0 +1,20 @@
+# Example: a company database, written in English.
+# Lines starting with # are comments.
+
+create company
+use company
+
+table department begin
+    name text
+    budget decimal
+end
+
+table employee begin
+    name text
+    age number
+    hire_date date
+    active boolean
+    department foreign
+end
+
+close
